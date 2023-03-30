@@ -46,17 +46,15 @@ log = logging.getLogger('ocrmypdf-watcher')
 
 
 def get_output_dir(root, basename):
-    if OUTPUT_DIRECTORY_YEAR_MONTH:
-        today = datetime.today()
-        output_directory_year_month = (
-            Path(root) / str(today.year) / f'{today.month:02d}'
-        )
-        if not output_directory_year_month.exists():
-            output_directory_year_month.mkdir(parents=True, exist_ok=True)
-        output_path = Path(output_directory_year_month) / basename
-    else:
-        output_path = Path(OUTPUT_DIRECTORY) / basename
-    return output_path
+    if not OUTPUT_DIRECTORY_YEAR_MONTH:
+        return Path(OUTPUT_DIRECTORY) / basename
+    today = datetime.now()
+    output_directory_year_month = (
+        Path(root) / str(today.year) / f'{today.month:02d}'
+    )
+    if not output_directory_year_month.exists():
+        output_directory_year_month.mkdir(parents=True, exist_ok=True)
+    return Path(output_directory_year_month) / basename
 
 
 def wait_for_file_ready(file_path):
@@ -97,15 +95,12 @@ def execute_ocrmypdf(file_path):
         deskew=DESKEW,
         **OCR_JSON_SETTINGS,
     )
-    if exit_code == 0:
-        if ON_SUCCESS_DELETE:
-            log.info(f'OCR is done. Deleting: {file_path}')
-            file_path.unlink()
-        elif ON_SUCCESS_ARCHIVE:
-            log.info(f'OCR is done. Archiving {file_path.name} to {ARCHIVE_DIRECTORY}')
-            shutil.move(file_path, f'{ARCHIVE_DIRECTORY}/{file_path.name}')
-        else:
-            log.info('OCR is done')
+    if exit_code == 0 and ON_SUCCESS_DELETE:
+        log.info(f'OCR is done. Deleting: {file_path}')
+        file_path.unlink()
+    elif exit_code == 0 and ON_SUCCESS_ARCHIVE:
+        log.info(f'OCR is done. Archiving {file_path.name} to {ARCHIVE_DIRECTORY}')
+        shutil.move(file_path, f'{ARCHIVE_DIRECTORY}/{file_path.name}')
     else:
         log.info('OCR is done')
 
@@ -153,10 +148,7 @@ def main():
         sys.exit(1)
 
     handler = HandleObserverEvent(patterns=PATTERNS)
-    if USE_POLLING:
-        observer = PollingObserver()
-    else:
-        observer = Observer()
+    observer = PollingObserver() if USE_POLLING else Observer()
     observer.schedule(handler, INPUT_DIRECTORY, recursive=True)
     observer.start()
     try:

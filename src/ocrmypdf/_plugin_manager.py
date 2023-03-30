@@ -45,13 +45,12 @@ class OcrmypdfPluginManager(pluggy.PluginManager):
         self.setup_plugins()
 
     def __getstate__(self):
-        state = dict(
+        return dict(
             init_args=self.__init_args,
             plugins=self.__plugins,
             builtins=self.__builtins,
             init_kwargs=self.__init_kwargs,
         )
-        return state
 
     def __setstate__(self, state):
         self.__init__(

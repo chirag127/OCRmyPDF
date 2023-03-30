@@ -135,14 +135,12 @@ def run_ocrmypdf(
         + [str(input_file), str(output_file)]
     )
 
-    p = run(
+    return run(
         p_args,
         capture_output=True,
         text=text,
         check=False,
     )
-    # print(p.stderr)
-    return p
 
 
 def first_page_dimensions(pdf: Path):

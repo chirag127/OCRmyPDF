@@ -100,9 +100,7 @@ class StandardExecutor(Executor):
 
         Remove this code when support for Python 3.8 is dropped.
         """
-        if sys.version_info[:2] < (3, 9):
-            return {}
-        return dict(cancel_futures=True)
+        return {} if sys.version_info[:2] < (3, 9) else dict(cancel_futures=True)
 
     def _execute(
         self,

@@ -380,7 +380,7 @@ def run_pipeline(
             executor=executor,
             detailed_analysis=options.redo_ocr,
             progbar=options.progress_bar,
-            max_workers=options.jobs if not options.use_threads else 1,  # To help debug
+            max_workers=1 if options.use_threads else options.jobs,
             check_pages=options.pages,
         )
 
@@ -398,9 +398,7 @@ def run_pipeline(
             hasattr(options.output_file, 'writable') and options.output_file.writable()
         ):
             log.info("Output written to stream")
-        elif samefile(options.output_file, Path(os.devnull)):
-            pass  # Say nothing when sending to dev null
-        else:
+        elif not samefile(options.output_file, Path(os.devnull)):
             if options.output_type.startswith('pdfa'):
                 pdfa_info = file_claims_pdfa(options.output_file)
                 if pdfa_info['pass']:
@@ -420,13 +418,13 @@ def run_pipeline(
                 options, start_input_file, options.output_file, optimize_messages
             )
 
-    except (KeyboardInterrupt if not api else NeverRaise):
+    except NeverRaise if api else KeyboardInterrupt:
         if options.verbose >= 1:
             log.exception("KeyboardInterrupt")
         else:
             log.error("KeyboardInterrupt")
         return ExitCode.ctrl_c
-    except (ExitCodeException if not api else NeverRaise) as e:
+    except NeverRaise if api else ExitCodeException as e:
         e = cast(ExitCodeException, e)
         if options.verbose >= 1:
             log.exception("ExitCodeException")
@@ -435,17 +433,14 @@ def run_pipeline(
         else:
             log.error(type(e).__name__)
         return e.exit_code
-    except (PIL.Image.DecompressionBombError if not api else NeverRaise):
+    except NeverRaise if api else PIL.Image.DecompressionBombError:
         log.exception(
             "A decompression bomb error was encountered while executing the "
             "pipeline. Use the argument --max-image-mpixels to raise the maximum "
             "image pixel limit."
         )
         return ExitCode.other_error
-    except (
-        BrokenProcessPool if not api else NeverRaise,
-        BrokenThreadPool if not api else NeverRaise,
-    ):
+    except (NeverRaise if api else BrokenProcessPool, NeverRaise if api else BrokenThreadPool):
         log.exception(
             "A worker process was terminated unexpectedly. This is known to occur if "
             "processing your file takes all available swap space and RAM. It may "
@@ -453,7 +448,7 @@ def run_pipeline(
             "argument."
         )
         return ExitCode.child_process_error
-    except (Exception if not api else NeverRaise):  # pylint: disable=broad-except
+    except NeverRaise if api else Exception:  # pylint: disable=broad-except
         log.exception("An exception occurred while executing the pipeline")
         return ExitCode.other_error
     finally:

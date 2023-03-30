@@ -59,13 +59,11 @@ def check_options_languages(options: Namespace, ocr_engine_languages: set[str]) 
             log.debug("No language specified; assuming --language %s", DEFAULT_LANGUAGE)
     if not ocr_engine_languages:
         return
-    missing_languages = options.languages - ocr_engine_languages
-    if missing_languages:
+    if missing_languages := options.languages - ocr_engine_languages:
         msg = (
             "OCR engine does not have language data for the following "
-            "requested languages: \n"
+            "requested languages: \n" + '\n'.join(missing_languages)
         )
-        msg += '\n'.join(lang for lang in missing_languages)
         msg += '\nNote: most languages are identified by a 3-digit ISO 639-2 Code'
         raise MissingDependencyError(msg)
 
@@ -87,16 +85,14 @@ def check_options_output(options: Namespace) -> None:
             f"`-` to suppress this message."
         )
 
-    lossless_reconstruction = False
-    if not any(
+    lossless_reconstruction = not any(
         (
             options.deskew,
             options.clean_final,
             options.force_ocr,
             options.remove_background,
         )
-    ):
-        lossless_reconstruction = True
+    )
     options.lossless_reconstruction = lossless_reconstruction
 
     if not options.lossless_reconstruction and options.redo_ocr:
@@ -116,8 +112,8 @@ def check_options_sidecar(options: Namespace) -> None:
             raise BadArgsError(
                 "--sidecar filename must be specified when output file is /dev/null or NUL."
             )
-        options.sidecar = options.output_file + '.txt'
-    if options.sidecar == options.input_file or options.sidecar == options.output_file:
+        options.sidecar = f'{options.output_file}.txt'
+    if options.sidecar in [options.input_file, options.output_file]:
         raise BadArgsError(
             "--sidecar file must be different from the input and output files"
         )
@@ -142,7 +138,7 @@ def check_options_preprocessing(options: Namespace) -> None:
                     options.unpaper_args
                 )
         except Exception as e:
-            raise BadArgsError("--unpaper-args: " + str(e)) from e
+            raise BadArgsError(f"--unpaper-args: {str(e)}") from e
 
 
 def _pages_from_ranges(ranges: str) -> set[int]:
@@ -157,12 +153,12 @@ def _pages_from_ranges(ranges: str) -> set[int]:
             pages.append(int(group) - 1)
         else:
             try:
-                new_pages = list(range(int(start) - 1, int(end)))
-                if not new_pages:
+                if new_pages := list(range(int(start) - 1, int(end))):
+                    pages.extend(new_pages)
+                else:
                     raise BadArgsError(
                         f"invalid page subrange '{start}-{end}'"
                     ) from None
-                pages.extend(new_pages)
             except ValueError:
                 raise BadArgsError(f"invalid page subrange '{group}'") from None
 
@@ -322,7 +318,6 @@ def report_output_file_size(
     if reasonable_ratio < 1.35 or input_size < 25000:
         return  # Seems fine
 
-    reasons = []
     image_preproc = {
         'deskew',
         'clean_final',
@@ -330,12 +325,11 @@ def report_output_file_size(
         'oversample',
         'force_ocr',
     }
-    for arg in image_preproc:
-        if getattr(options, arg, False):
-            reasons.append(
-                f"The argument --{arg.replace('_', '-')} was issued, causing transcoding."
-            )
-
+    reasons = [
+        f"The argument --{arg.replace('_', '-')} was issued, causing transcoding."
+        for arg in image_preproc
+        if getattr(options, arg, False)
+    ]
     reasons.extend(optimize_messages)
 
     if options.output_type.startswith('pdfa'):

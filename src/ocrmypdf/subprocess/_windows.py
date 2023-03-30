@@ -97,8 +97,7 @@ def registry_path_tesseract(env=None) -> Iterator[Path]:
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Tesseract-OCR") as k:
             for subkey, val, _valtype in registry_values(k):
                 if subkey == 'InstallDir':
-                    tesseract_path = Path(val)
-                    yield tesseract_path
+                    yield Path(val)
     except OSError as e:
         log.warning(e)
 
@@ -116,10 +115,9 @@ def _gs_version_in_path_key(path: Path) -> tuple[str, Version | None]:
     Thus ensuring the resulting tuple will order the alternatives correctly,
     e.g. gs10.0 > gs9.99.
     """
-    match = re.search(r'gs[/\\]?([0-9.]+)[/\\]bin', str(path))
-    if match:
+    if match := re.search(r'gs[/\\]?([0-9.]+)[/\\]bin', str(path)):
         try:
-            version_str = match.group(1)
+            version_str = match[1]
             version = Version(version_str)
             return 'gs', version
         except InvalidVersion:
@@ -142,11 +140,7 @@ def program_files_paths(env=None) -> Iterator[Path]:
                 yield from (p for p in path.glob('**/bin') if p.is_dir())
 
     return iter(
-        sorted(
-            (p for p in path_walker()),
-            key=_gs_version_in_path_key,
-            reverse=True,
-        )
+        sorted(iter(path_walker()), key=_gs_version_in_path_key, reverse=True)
     )
 
 
@@ -179,8 +173,7 @@ def fix_windows_args(program: str, args, env):
     # If the program we want is not on the PATH, check elsewhere
     for shim in SHIMS:
         shimmed_path = shim_path(shim, env)
-        new_args0 = shutil.which(args[0], path=shimmed_path)
-        if new_args0:
+        if new_args0 := shutil.which(args[0], path=shimmed_path):
             args[0] = new_args0
             break
 

@@ -129,9 +129,7 @@ class LTStateAwareChar(LTChar):
             return False
 
     def get_text(self):
-        if isinstance(self._text, tuple):
-            return '\ufffd'  # standard 'Unknown symbol'
-        return self._text
+        return '\ufffd' if isinstance(self._text, tuple) else self._text
 
     def __repr__(self):
         return (

@@ -30,15 +30,15 @@ def _postscript_objdef(
 ) -> Iterator[str]:
     assert (stream_name is None) == (stream_data is None)
 
-    objtype = '/stream' if stream_name else '/dict'
-
     if stream_name:
         assert stream_data is not None
         a85_data = base64.a85encode(stream_data, adobe=True).decode('ascii')
-        yield f'{stream_name} ' + a85_data
+        yield f'{stream_name} {a85_data}'
         yield 'def'
 
     if alias != '{Catalog}':  # Catalog needs no definition
+        objtype = '/stream' if stream_name else '/dict'
+
         yield f'[/_objdef {alias} /type {objtype} /OBJ pdfmark'
 
     yield f'[{alias} <<'

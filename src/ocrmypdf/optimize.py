@@ -387,7 +387,7 @@ def convert_to_jbig2(
 
     for group, xref_exts in jbig2_groups.items():
         prefix = f'group{group:08d}'
-        jbig2_symfile = root / (prefix + '.sym')
+        jbig2_symfile = root / f'{prefix}.sym'
         if jbig2_symfile.exists():
             jbig2_globals_data = jbig2_symfile.read_bytes()
             jbig2_globals = Stream(pike, jbig2_globals_data)
@@ -399,7 +399,7 @@ def convert_to_jbig2(
 
         for n, xref_ext in enumerate(xref_exts):
             xref, _ = xref_ext
-            jbig2_im_file = root / (prefix + f'.{n:04d}')
+            jbig2_im_file = root / f'{prefix}.{n:04d}'
             jbig2_im_data = jbig2_im_file.read_bytes()
             im_obj = pike.get_object(xref, 0)
             im_obj.write(
@@ -475,9 +475,7 @@ def _deflate_jpeg(args: tuple[Pdf, threading.Lock, Xref, int]) -> tuple[Xref, by
         except PdfError:
             return xref, b''
     compdata = compress(data, complevel)
-    if len(compdata) >= len(data):
-        return xref, b''
-    return xref, compdata
+    return (xref, b'') if len(compdata) >= len(data) else (xref, compdata)
 
 
 def deflate_jpegs(pike: Pdf, root: Path, options, executor: Executor) -> None:

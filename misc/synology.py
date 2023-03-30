@@ -4,6 +4,7 @@
 
 """Example OCRmyPDF for Synology NAS"""
 
+
 from __future__ import annotations
 
 # This script must be edited to meet your needs.
@@ -19,7 +20,7 @@ import time
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 timestamp = time.strftime("%Y-%m-%d-%H%M_")
-log_file = script_dir + '/' + timestamp + 'ocrmypdf.log'
+log_file = f'{script_dir}/{timestamp}ocrmypdf.log'
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(message)s',
@@ -69,7 +70,7 @@ for dir_name, _subdirs, file_list in os.walk(start_dir):
         os.chmod(full_path_ocr, 0o664)
         os.chmod(full_path, 0o664)
         full_path_ocr_archive = sys.argv[2]
-        full_path_archive = sys.argv[2] + '/no_ocr'
+        full_path_archive = f'{sys.argv[2]}/no_ocr'
         shutil.move(full_path_ocr, full_path_ocr_archive)
         shutil.move(full_path, full_path_archive)
 logging.info('Finished.\n')

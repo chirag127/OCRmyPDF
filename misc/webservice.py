@@ -43,7 +43,7 @@ def do_ocrmypdf(file):
 
     down_file = os.path.join(downloaddir.name, filename)
 
-    cmd_args = [arg for arg in shlex.split(request.form["params"])]
+    cmd_args = list(shlex.split(request.form["params"]))
     if "--sidecar" in cmd_args:
         return Response("--sidecar not supported", 501, mimetype='text/plain')
 
@@ -58,19 +58,8 @@ def do_ocrmypdf(file):
 
 @app.route("/", methods=["GET", "POST"])
 def upload_file():
-    if request.method == "POST":
-        if "file" not in request.files:
-            return Response("No file in POST", 400, mimetype='text/plain')
-        file = request.files["file"]
-        if file.filename == "":
-            return Response("Empty filename", 400, mimetype='text/plain')
-        if not allowed_file(file.filename):
-            return Response("Invalid filename", 400, mimetype='text/plain')
-        if file and allowed_file(file.filename):
-            return do_ocrmypdf(file)
-        return Response("Some other problem", 400, mimetype='text/plain')
-
-    return """
+    if request.method != "POST":
+        return """
     <!doctype html>
     <title>OCRmyPDF webservice</title>
     <h1>Upload a PDF (debug UI)</h1>
@@ -101,6 +90,16 @@ def upload_file():
     </p>
     </div>
     """
+    if "file" not in request.files:
+        return Response("No file in POST", 400, mimetype='text/plain')
+    file = request.files["file"]
+    if file.filename == "":
+        return Response("Empty filename", 400, mimetype='text/plain')
+    if not allowed_file(file.filename):
+        return Response("Invalid filename", 400, mimetype='text/plain')
+    if file and allowed_file(file.filename):
+        return do_ocrmypdf(file)
+    return Response("Some other problem", 400, mimetype='text/plain')
 
 
 if __name__ == "__main__":

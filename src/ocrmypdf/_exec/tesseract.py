@@ -196,10 +196,9 @@ def get_orientation(
 
     osd = _parse_tesseract_output(p.stdout)
     angle = int(osd.get('Orientation in degrees', 0))
-    orient_conf = OrientationConfidence(
+    return OrientationConfidence(
         angle=angle, confidence=float(osd.get('Orientation confidence', 0))
     )
-    return orient_conf
 
 
 def get_deskew(
@@ -229,8 +228,7 @@ def get_deskew(
 
     parsed = _parse_tesseract_output(p.stdout)
     deskew_radians = float(parsed.get('Deskew angle', 0))
-    deskew_degrees = 180 / pi * deskew_radians
-    return deskew_degrees
+    return 180 / pi * deskew_radians
 
 
 def tesseract_log_output(stream: bytes) -> None:

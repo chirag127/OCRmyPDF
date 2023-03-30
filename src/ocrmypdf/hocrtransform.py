@@ -127,7 +127,7 @@ class HocrTransform:
         matches = re.match(r'({.*})html', self.hocr.getroot().tag)
         self.xmlns = ''
         if matches:
-            self.xmlns = matches.group(1)
+            self.xmlns = matches[1]
 
         # get dimension in pt (not pixel!!!!) of the OCRed image
         self.width, self.height = None, None
@@ -142,14 +142,13 @@ class HocrTransform:
         if self.width is None or self.height is None:
             raise HocrTransformError("hocr file is missing page dimensions")
 
-    def __str__(self):  # pragma: no cover
+    def __str__(self):    # pragma: no cover
         """
         Return the textual content of the HTML body
         """
         if self.hocr is None:
             return ''
-        body = self.hocr.find(self._child_xpath('body'))
-        if body:
+        if body := self.hocr.find(self._child_xpath('body')):
             return self._get_element_text(body)
         else:
             return ''
@@ -175,8 +174,7 @@ class HocrTransform:
         """
         out = Rect._make(0 for _ in range(4))
         if 'title' in element.attrib:
-            matches = cls.box_pattern.search(element.attrib['title'])
-            if matches:
+            if matches := cls.box_pattern.search(element.attrib['title']):
                 coords = matches.group(1).split()
                 out = Rect._make(int(coords[n]) for n in range(4))
         return out
@@ -187,8 +185,7 @@ class HocrTransform:
         Returns a tuple containing the baseline slope and intercept.
         """
         if 'title' in element.attrib:
-            matches = cls.baseline_pattern.search(element.attrib['title'])
-            if matches:
+            if matches := cls.baseline_pattern.search(element.attrib['title']):
                 return float(matches.group(1)), int(matches.group(2))
         return (0.0, 0.0)
 

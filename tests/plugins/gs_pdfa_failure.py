@@ -17,8 +17,7 @@ def run_rig_args(args, **kwargs):
     new_args = [
         arg for arg in args if not arg.startswith('-dPDFA') and not arg.endswith('.ps')
     ]
-    proc = run_polling_stderr(new_args, **kwargs)
-    return proc
+    return run_polling_stderr(new_args, **kwargs)
 
 
 @hookimpl

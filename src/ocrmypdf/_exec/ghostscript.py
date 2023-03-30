@@ -3,6 +3,7 @@
 
 """Interface to Ghostscript executable"""
 
+
 from __future__ import annotations
 
 import logging
@@ -35,12 +36,8 @@ _IS_64BIT = sys.maxsize > 2**32
 
 _GSWIN = None
 if os.name == 'nt':
-    if _IS_64BIT:
-        _GSWIN = 'gswin64c'
-    else:
-        _GSWIN = 'gswin32c'
-
-GS = _GSWIN if _GSWIN else 'gs'
+    _GSWIN = 'gswin64c' if _IS_64BIT else 'gswin32c'
+GS = _GSWIN or 'gs'
 del _GSWIN
 
 
@@ -140,17 +137,16 @@ class GhostscriptFollower:
     def __call__(self, line):
         if not self.progressbar_class:
             return
-        if not self.progressbar:
-            m = self.re_process.match(line.strip())
-            if m:
-                self.count = int(m.group(1))
-                self.progressbar = self.progressbar_class(
-                    total=self.count, desc="PDF/A conversion", unit='page'
-                )
-                return
-        else:
+        if self.progressbar:
             if self.re_page.match(line.strip()):
                 self.progressbar.update()
+
+        elif m := self.re_process.match(line.strip()):
+            self.count = int(m.group(1))
+            self.progressbar = self.progressbar_class(
+                total=self.count, desc="PDF/A conversion", unit='page'
+            )
+            return
 
 
 def generate_pdfa(
@@ -202,21 +198,20 @@ def generate_pdfa(
             "-dBATCH",
             "-dNOPAUSE",
             "-dSAFER",
-            "-dCompatibilityLevel=" + str(pdf_version),
+            f"-dCompatibilityLevel={pdf_version}",
             "-sDEVICE=pdfwrite",
             "-dAutoRotatePages=/None",
-            "-sColorConversionStrategy=" + strategy,
+            f"-sColorConversionStrategy={strategy}",
         ]
         + compression_args
-        + [
-            "-dJPEGQ=95",
-            "-dPDFA=" + pdfa_part,
-            "-dPDFACompatibilityPolicy=1",
-            "-o",
-            "-",
-            "-sstdout=%stderr",  # Literal %s, not string interpolation
-        ]
-    )
+    ) + [
+        "-dJPEGQ=95",
+        f"-dPDFA={pdfa_part}",
+        "-dPDFACompatibilityPolicy=1",
+        "-o",
+        "-",
+        "-sstdout=%stderr",
+    ]
     args_gs.extend(fspath(s) for s in pdf_pages)  # Stringify Path objs
 
     try:
