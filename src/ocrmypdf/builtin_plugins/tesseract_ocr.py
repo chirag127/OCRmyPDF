@@ -33,7 +33,7 @@ def add_options(parser):
         action='store',
         type=int,
         metavar='PSM',
-        choices=range(0, 14),
+        choices=range(14),
         help="Set Tesseract page segmentation mode (see tesseract --help)",
     )
     tess.add_argument(
@@ -41,7 +41,7 @@ def add_options(parser):
         action='store',
         type=int,
         metavar='MODE',
-        choices=range(0, 4),
+        choices=range(4),
         help=(
             "Set Tesseract 4+ OCR engine mode: "
             "0 - original Tesseract only; "

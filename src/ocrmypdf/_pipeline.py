@@ -124,9 +124,8 @@ def _pdf_guess_version(input_file: Path, search_window=1024) -> str:
 
     with open(input_file, 'rb') as f:
         signature = f.read(search_window)
-    m = re.search(br'%PDF-(\d\.\d)', signature)
-    if m:
-        return m.group(1).decode('ascii')
+    if m := re.search(br'%PDF-(\d\.\d)', signature):
+        return m[1].decode('ascii')
     return ''
 
 
@@ -275,7 +274,11 @@ def is_ocr_required(page_context: PageContext) -> bool:
         log.debug(f"skipped {pageinfo.pageno} as requested by --pages {options.pages}")
         ocr_required = False
     elif pageinfo.has_text:
-        if not options.force_ocr and not (options.skip_text or options.redo_ocr):
+        if (
+            not options.force_ocr
+            and not options.skip_text
+            and not options.redo_ocr
+        ):
             raise PriorOcrFoundError(
                 "page already has text! - aborting (use --force-ocr to force OCR; "
                 " see also help for the arguments --skip-text and --redo-ocr"
@@ -292,7 +295,7 @@ def is_ocr_required(page_context: PageContext) -> bool:
             else:
                 log.info("redoing OCR")
             ocr_required = True
-        elif options.skip_text:
+        else:
             log.info("skipping all processing on this page")
             ocr_required = False
     elif not pageinfo.images and not options.lossless_reconstruction:
@@ -362,20 +365,20 @@ def describe_rotation(page_context: PageContext, orient_conf, correction: int) -
     Describe the page rotation we are going to perform.
     """
     direction = {0: '⇧', 90: '⇨', 180: '⇩', 270: '⇦'}
-    turns = {0: ' ', 90: '⬏', 180: '↻', 270: '⬑'}
-
     existing_rotation = page_context.pageinfo.rotation
     action = ''
     if orient_conf.confidence >= page_context.options.rotate_pages_threshold:
-        if correction != 0:
-            action = 'will rotate ' + turns[correction]
-        else:
-            action = 'rotation appears correct'
+        turns = {0: ' ', 90: '⬏', 180: '↻', 270: '⬑'}
+
+        action = (
+            f'will rotate {turns[correction]}'
+            if correction != 0
+            else 'rotation appears correct'
+        )
+    elif correction != 0:
+        action = 'confidence too low to rotate'
     else:
-        if correction != 0:
-            action = 'confidence too low to rotate'
-        else:
-            action = 'no change'
+        action = 'no change'
 
     facing = ''
 
@@ -524,12 +527,7 @@ def create_ocr_image(image: Path, page_context: PageContext) -> Path:
         log.debug('resolution %r', im.info['dpi'])
 
         if not options.force_ocr:
-            # Do not mask text areas when forcing OCR, because we need to OCR
-            # all text areas
-            mask = None  # Exclude both visible and invisible text from OCR
-            if options.redo_ocr:
-                mask = True  # Mask visible text, but not invisible text
-
+            mask = True if options.redo_ocr else None
             draw = ImageDraw.ImageDraw(im)
             for textarea in page_context.pageinfo.get_textareas(
                 visible=mask, corrupt=None
@@ -643,8 +641,8 @@ def render_hocr_page(hocr: Path, page_context: PageContext) -> Path:
     hocrtransform.to_pdf(
         out_filename=output_file,
         image_filename=None,
-        show_bounding_boxes=False if not debug_mode else True,
-        invisible_text=True if not debug_mode else False,
+        show_bounding_boxes=debug_mode,
+        invisible_text=not debug_mode,
         interword_spaces=True,
     )
     return output_file
@@ -753,9 +751,7 @@ def convert_to_pdfa(input_pdf: Path, input_ps_stub: Path, context: PdfContext) -
 
 def should_linearize(working_file: Path, context: PdfContext) -> bool:
     filesize = os.stat(working_file).st_size
-    if filesize > (context.options.fast_web_view * 1_000_000):
-        return True
-    return False
+    return filesize > context.options.fast_web_view * 1_000_000
 
 
 def get_pdf_save_settings(output_type: str) -> dict[str, Any]:
@@ -797,7 +793,7 @@ def metadata_fixup(working_file: Path, context: PdfContext) -> Path:
             )
             log.info("The following metadata fields were not copied: %r", missing)
 
-    with pikepdf.open(context.origin) as original, pikepdf.open(working_file) as pdf:
+    with (pikepdf.open(context.origin) as original, pikepdf.open(working_file) as pdf):
         docinfo = get_docinfo(original, context)
         with pdf.open_metadata() as meta:
             meta.load_from_docinfo(docinfo, delete_missing=False, raise_failure=False)
@@ -807,14 +803,13 @@ def metadata_fixup(working_file: Path, context: PdfContext) -> Path:
                 meta['xmp:CreateDate'] = meta.get('xmp:ModifyDate', '')
 
             with original.open_metadata(
-                set_pikepdf_as_editor=False, update_docinfo=False, strict=False
-            ) as meta_original:
-                if meta.get('dc:title') == 'Untitled':
-                    # Ghostscript likes to set title to Untitled if omitted from input.
-                    # Reverse this, because PDF/A TechNote 0003:Metadata in PDF/A-1
-                    # and the XMP Spec do not make this recommendation.
-                    if 'dc:title' not in meta_original:
-                        del meta['dc:title']
+                            set_pikepdf_as_editor=False, update_docinfo=False, strict=False
+                        ) as meta_original:
+                if (
+                    meta.get('dc:title') == 'Untitled'
+                    and 'dc:title' not in meta_original
+                ):
+                    del meta['dc:title']
                 missing = set(meta_original.keys()) - set(meta.keys())
                 report_on_metadata(missing)
 
@@ -863,9 +858,8 @@ def enumerate_compress_ranges(iterable):
                 yield (skipped_from, index - 1), None
                 skipped_from = None
             yield (index, index), txt_file
-        else:
-            if skipped_from is None:
-                skipped_from = index
+        elif skipped_from is None:
+            skipped_from = index
     if skipped_from is not None:
         yield (skipped_from, index), None
 
@@ -887,10 +881,7 @@ def merge_sidecars(txt_files: Iterable[Path | None], context: PdfContext) -> Pat
                     else:
                         stream.write(txt)
             else:
-                if from_ != to_:
-                    pages = f'{from_}-{to_}'
-                else:
-                    pages = f'{from_}'
+                pages = f'{from_}-{to_}' if from_ != to_ else f'{from_}'
                 stream.write(f'[OCR skipped on page(s) {pages}]')
     return output_file
 

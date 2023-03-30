@@ -114,14 +114,11 @@ def configure_logging(
         fmt = '%(pageno)s%(message)s'
 
     use_colors = progress_bar_friendly
-    formatter = None
     if use_colors:
         use_colors = enable_ansi_support()
-        if use_colors:
-            use_colors = coloredlogs.terminal_supports_colors()
-        if use_colors:
-            formatter = coloredlogs.ColoredFormatter(fmt=fmt)
-
+    if use_colors:
+        use_colors = coloredlogs.terminal_supports_colors()
+    formatter = coloredlogs.ColoredFormatter(fmt=fmt) if use_colors else None
     if not formatter:
         formatter = logging.Formatter(fmt=fmt)
 
@@ -166,18 +163,19 @@ def create_options(
 
         if is_iterable_notstr(val):
             for elem in val:
-                cmdline.append(f"--{cmd_style_arg}")
-                cmdline.append(elem)
+                cmdline.extend((f"--{cmd_style_arg}", elem))
             continue
 
         # We have a parameter
         cmdline.append(f"--{cmd_style_arg}")
-        if isinstance(val, (int, float)):
+        if (
+            isinstance(val, (int, float))
+            or not isinstance(val, str)
+            and isinstance(val, Path)
+        ):
             cmdline.append(str(val))
         elif isinstance(val, str):
             cmdline.append(val)
-        elif isinstance(val, Path):
-            cmdline.append(str(val))
         else:
             raise TypeError(f"{arg}: {val} ({type(val)})")
 
@@ -308,10 +306,9 @@ def ocr(  # pylint: disable=unused-argument
     else:
         plugins = list(plugins)
 
-    # No new variable names should be assigned until these two steps are run
-    create_options_kwargs = {k: v for k, v in locals().items() if k != 'kwargs'}
-    create_options_kwargs.update(kwargs)
-
+    create_options_kwargs = {
+        k: v for k, v in locals().items() if k != 'kwargs'
+    } | kwargs
     parser = get_parser()
     create_options_kwargs['parser'] = parser
 

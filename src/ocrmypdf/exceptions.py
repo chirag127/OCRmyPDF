@@ -36,9 +36,7 @@ class ExitCodeException(Exception):
 
     def __str__(self):
         super_msg = super().__str__()  # Don't do str(super())
-        if self.message:
-            return self.message.format(super_msg)
-        return super_msg
+        return self.message.format(super_msg) if self.message else super_msg
 
 
 class BadArgsError(ExitCodeException):

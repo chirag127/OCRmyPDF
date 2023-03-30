@@ -104,8 +104,8 @@ def cached_run(options, run_args, **run_kwargs):
                 args.configfiles.append('txt')
             for configfile in args.configfiles:
                 # cp cache -> output
-                tessfile = args.outputbase + '.' + configfile
-                shutil.copy(str(cache_folder / configfile) + '.bin', tessfile)
+                tessfile = f'{args.outputbase}.{configfile}'
+                shutil.copy(f'{str(cache_folder / configfile)}.bin', tessfile)
         return CompletedProcess(
             args=run_args,
             returncode=0,
@@ -137,8 +137,8 @@ def cached_run(options, run_args, **run_kwargs):
             if configfile not in ('hocr', 'pdf', 'txt'):
                 continue
             # cp pwd/{outputbase}.{configfile} -> {cache}/{configfile}
-            tessfile = args.outputbase + '.' + configfile
-            shutil.copy(tessfile, str(cache_folder / configfile) + '.bin')
+            tessfile = f'{args.outputbase}.{configfile}'
+            shutil.copy(tessfile, f'{str(cache_folder / configfile)}.bin')
 
     def clean_sys_argv():
         for arg in run_args[1:]:

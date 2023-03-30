@@ -358,11 +358,7 @@ class ImageInfo:
         # If /ImageMask is true, then this image is a stencil mask
         # (Images that draw with this stencil mask will have a reference to
         # it in their /Mask, but we don't actually need that information)
-        if pim.image_mask:
-            self._type = 'stencil'
-        else:
-            self._type = 'image'
-
+        self._type = 'stencil' if pim.image_mask else 'image'
         self._bpc = int(pim.bits_per_component)
         try:
             self._enc = FRIENDLY_ENCODING.get(pim.filters[0])
@@ -380,10 +376,10 @@ class ImageInfo:
             # Check the ICC profile to determine actual colorspace
             try:
                 pim_icc = pim.icc
-                if pim_icc.profile.xcolor_space == 'GRAY':
-                    self._comp = 1
-                elif pim_icc.profile.xcolor_space == 'CMYK':
+                if pim_icc.profile.xcolor_space == 'CMYK':
                     self._comp = 4
+                elif pim_icc.profile.xcolor_space == 'GRAY':
+                    self._comp = 1
                 else:
                     self._comp = 3
             except (AttributeError, UnsupportedImageTypeError) as ex:
@@ -663,8 +659,7 @@ def _pdf_pageinfo_sync(args):
     with ExitStack() as stack:
         if not pdf:  # When called with SerialExecutor
             pdf = stack.enter_context(Pdf.open(infile))
-        page = PageInfo(pdf, pageno, infile, check_pages, detailed_analysis)
-        return page
+        return PageInfo(pdf, pageno, infile, check_pages, detailed_analysis)
 
 
 def _pdf_pageinfo_concurrent(
@@ -785,10 +780,10 @@ class PageInfo:
 
         userunit_shorthand = (userunit, 0, 0, userunit, 0, 0)
 
+        self._images = []
         if check_this_page:
             self._has_vector = False
             self._has_text = False
-            self._images = []
             for info in _process_content_streams(
                 pdf=pdf, container=page, shorthand=userunit_shorthand
             ):
@@ -803,8 +798,6 @@ class PageInfo:
         else:
             self._has_vector = None  # i.e. "no information"
             self._has_text = None
-            self._images = []
-
         self._dpi = None
         if self._images:
             dpi = Resolution(0.0, 0.0).take_max(
@@ -866,12 +859,10 @@ class PageInfo:
     def get_textareas(self, visible: bool | None = None, corrupt: bool | None = None):
         def predicate(obj, want_visible, want_corrupt):
             result = True
-            if want_visible is not None:
-                if obj.is_visible != want_visible:
-                    result = False
-            if want_corrupt is not None:
-                if obj.is_corrupt != want_corrupt:
-                    result = False
+            if want_visible is not None and obj.is_visible != want_visible:
+                result = False
+            if want_corrupt is not None and obj.is_corrupt != want_corrupt:
+                result = False
             return result
 
         if not self._textboxes:
@@ -883,9 +874,7 @@ class PageInfo:
 
     @property
     def dpi(self) -> Resolution:
-        if self._dpi is None:
-            return Resolution(0.0, 0.0)
-        return self._dpi
+        return Resolution(0.0, 0.0) if self._dpi is None else self._dpi
 
     @property
     def userunit(self) -> Decimal:
@@ -893,10 +882,7 @@ class PageInfo:
 
     @property
     def min_version(self) -> str:
-        if self.userunit is not None:
-            return '1.6'
-        else:
-            return '1.5'
+        return '1.6' if self.userunit is not None else '1.5'
 
     def __repr__(self):
         return (
@@ -924,7 +910,7 @@ class PdfInfo:
     ):
         self._infile = infile
         if check_pages is None:
-            check_pages = range(0, 1_000_000_000)
+            check_pages = range(1_000_000_000)
 
         with Pdf.open(infile) as pdf:
             if pdf.is_encrypted:

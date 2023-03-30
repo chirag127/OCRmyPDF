@@ -52,7 +52,7 @@ def run(
     args, env, process_log, _text = _fix_process_args(args, env, kwargs)
 
     stderr = None
-    stderr_name = 'stderr' if not logs_errors_to_stdout else 'stdout'
+    stderr_name = 'stdout' if logs_errors_to_stdout else 'stderr'
     try:
         proc = subprocess_run(args, env=env, check=check, **kwargs)
     except CalledProcessError as e:
@@ -175,15 +175,13 @@ def get_version(
             f"Could not find program '{program}' on the PATH"
         ) from e
 
-    match = re.match(regex, output.strip())
-    if not match:
+    if match := re.match(regex, output.strip()):
+        return match[1]
+    else:
         raise MissingDependencyError(
             f"The program '{program}' did not report its version. "
             f"Message was:\n{output}"
         )
-    version = match.group(1)
-
-    return version
 
 
 MISSING_PROGRAM = '''
@@ -293,9 +291,7 @@ def _remove_leading_v(s: str) -> str:
     if sys.version_info >= (3, 9):
         return s.removeprefix('v')
 
-    if s.startswith('v'):
-        return s[1:]
-    return s
+    return s[1:] if s.startswith('v') else s
 
 
 def check_external_program(

@@ -81,7 +81,7 @@ class LanguageSetAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         dest = getattr(namespace, self.dest)
         if '+' in values:
-            dest.update(lang for lang in values.split('+'))
+            dest.update(iter(values.split('+')))
         else:
             dest.add(values)
 

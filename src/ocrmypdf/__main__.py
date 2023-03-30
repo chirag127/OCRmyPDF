@@ -66,8 +66,7 @@ def run(args=None):
     with suppress(AttributeError, OSError):
         signal.signal(signal.SIGBUS, sigbus)
 
-    result = run_pipeline(options=options, plugin_manager=plugin_manager)
-    return result
+    return run_pipeline(options=options, plugin_manager=plugin_manager)
 
 
 if __name__ == '__main__':

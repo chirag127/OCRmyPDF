@@ -102,9 +102,11 @@ class Resolution(Generic[T]):
     def __eq__(self, other):
         if isinstance(other, tuple) and len(other) == 2:
             other = Resolution(*other)
-        if not isinstance(other, Resolution):
-            return NotImplemented
-        return self._isclose(self.x, other.x) and self._isclose(self.y, other.y)
+        return (
+            self._isclose(self.x, other.x) and self._isclose(self.y, other.y)
+            if isinstance(other, Resolution)
+            else NotImplemented
+        )
 
 
 class NeverRaise(Exception):
@@ -153,10 +155,7 @@ def safe_symlink(input_file: os.PathLike, soft_link_name: os.PathLike):
 
 
 def samefile(file1: os.PathLike, file2: os.PathLike):
-    if os.name == 'nt':
-        return file1 == file2
-    else:
-        return os.path.samefile(file1, file2)
+    return file1 == file2 if os.name == 'nt' else os.path.samefile(file1, file2)
 
 
 def is_iterable_notstr(thing: Any) -> bool:
@@ -171,15 +170,13 @@ def monotonic(seq: Sequence) -> bool:
 
 def page_number(input_file: os.PathLike) -> int:
     """Get one-based page number implied by filename (000002.pdf -> 2)"""
-    return int(os.path.basename(os.fspath(input_file))[0:6])
+    return int(os.path.basename(os.fspath(input_file))[:6])
 
 
 def available_cpu_count() -> int:
     """Returns number of CPUs in the system."""
-    try:
+    with suppress(NotImplementedError):
         return multiprocessing.cpu_count()
-    except NotImplementedError:
-        pass
     warnings.warn(
         "Could not get CPU count. Assuming one (1) CPU. Use -j N to set manually."
     )
@@ -242,10 +239,8 @@ def check_pdf(input_file: Path) -> bool:
                     success = False
                 elif (
                     "/DecodeParms: operation for dictionary attempted on object "
-                    "of type null" in msg
+                    "of type null" not in msg
                 ):
-                    pass  # Ignore/spurious warning
-                else:
                     log.warning(msg)
                     success = False
 
@@ -262,9 +257,7 @@ def check_pdf(input_file: Path) -> bool:
                 if linearize_msgs:
                     log.warning(linearize_msgs)
 
-            if success and not linearize_msgs:
-                return True
-            return False
+            return bool(success and not linearize_msgs)
 
 
 def clamp(n, smallest, largest):  # mypy doesn't understand types for this

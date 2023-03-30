@@ -719,14 +719,15 @@ def test_compression_changed(ocrmypdf_exec, resources, image, compression, outpd
 
     pdfimage = pdfinfo[0].images[0]
 
-    if compression == "jpeg":
+    if (
+        compression != "jpeg"
+        and image.endswith('jpg')
+        or compression == "jpeg"
+    ):
+        # Ghostscript JPEG passthrough - no issue
         assert pdfimage.enc == Encoding.jpeg
     else:
-        if image.endswith('jpg'):
-            # Ghostscript JPEG passthrough - no issue
-            assert pdfimage.enc == Encoding.jpeg
-        else:
-            assert pdfimage.enc not in (Encoding.jpeg, Encoding.jpeg2000)
+        assert pdfimage.enc not in (Encoding.jpeg, Encoding.jpeg2000)
 
     if im.mode.startswith('RGB') or im.mode.startswith('BGR'):
         assert pdfimage.color == Colorspace.rgb, "Colorspace changed"
@@ -782,7 +783,7 @@ def test_pdfa_n(pdfa_level, resources, outpdf):
         resources / 'ccitt.pdf',
         outpdf,
         '--output-type',
-        'pdfa-' + pdfa_level,
+        f'pdfa-{pdfa_level}',
         '--plugin',
         'tests/plugins/tesseract_cache.py',
     )

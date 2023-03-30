@@ -86,14 +86,14 @@ def _convert_image(im: Image.Image) -> tuple[Image.Image, bool]:
                 im = im.convert(mode='RGB')
         except OSError as e:
             raise MissingDependencyError(
-                "Could not convert image with type " + im.mode
+                f"Could not convert image with type {im.mode}"
             ) from e
         else:
             im_modified = True
-        if im.mode not in SUPPORTED_MODES:
-            raise MissingDependencyError(
-                "Failed to convert image to a supported format."
-            ) from None
+    if im.mode not in SUPPORTED_MODES:
+        raise MissingDependencyError(
+            "Failed to convert image to a supported format."
+        ) from None
     return im, im_modified
 
 
